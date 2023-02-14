@@ -31,6 +31,6 @@ class Translator{
       localizeDate(date){
         return date.toLocalDateString(this.getLanguage());
       }
-}
+};
 
 export default Translator;
