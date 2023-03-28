@@ -1,47 +1,67 @@
-import Express from "express";
+import express from 'express';
+import pgPromise from 'pg-promise';
 
-const server = new Express();
+const pgp = pgPromise();
 
+const db = pgp({
+  host: '35.228.23.233',
+  port: 5432,
+  database: 'todo-maria-database',
+  user: 'postgres',
+  password: '1)O8$D*`kc?y;o&9',
+});
+
+const server = express();
 const port = 8080;
 
-server.set("port", port);
+server.set('port', port);
+server.use(express.static('Frontend'));
 
-server.use(Express.static("Frontend"));
-
-server.get("/", (req, res) => {
-    res.status(200).send("Hello World").end();
+server.listen(server.get('port'), '0.0.0.0', () => {
+  console.log('Server is running on port', server.get('port'));
 });
 
-server.listen(server.get("port"),() => {
-    console.log("server running", server.get("port"));
+server.post('/login', express.json(), function (req, res) {
+  const username = req.body.username;
+  const password = req.body.password;
+
+  if (!username || !password) {
+    res.status(400).json({ message: 'Missing username or password' });
+    return;
+  }
+
+  db.oneOrNone('SELECT username FROM users WHERE username = $1 AND password = $2', [username, password])
+    .then(function (result) {
+      console.log('Query result:', result);
+      if (!result) {
+        res.status(401).json({ message: 'Invalid username or password' });
+        return;
+      }
+
+      res.status(200).json({ message: 'Login successful' });
+    })
+    .catch(function (err) {
+      console.error('Error logging in:', err);
+      res.status(500).json({ message: 'Internal server error' });
+    });
 });
 
-server.get("/jokes/:language", (req, res) => {
-    const languageSelected = req.params.language;
-    const languageJokes = jokes[languageSelected];
+server.post('/createUser', express.json(), function (req, res) {
+  const username = req.body.username;
+  const password = req.body.password;
 
-    if(!languageJokes){
-        return res.status(400).send({error: "Invalid language code"});
-    };
+  if (!username || !password) {
+    res.status(400).json({ message: 'Missing username or password' });
+    return;
+  }
 
-    const randomIndex = Math.floor(Math.random() * Object.keys(languageJokes).length);
-    const joke = languageJokes[randomIndex].joke;
-
-    res.send({joke});
+  db.query('INSERT INTO users (username, password) VALUES ($1, $2)', [username, password])
+    .then(function () {
+      console.log('User created successfully:', username);
+      res.status(201).json({ message: 'User created successfully' });
+    })
+    .catch(function (err) {
+      console.error('Error creating user:', err);
+      res.status(500).json({ message: 'Internal server error' });
+    });
 });
-
-const jokes = {
-    en: [
-      { joke: 'Why did the tomato turn red? Because it saw the salad dressing!' },
-      { joke: 'Why did the scarecrow win an award? Because he was outstanding in his field!' },
-    ],
-    no: [
-      { joke: 'Hvorfor stod melken på kjøkkenbenken? Fordi den ikke klarte å gå tilbake til kjøleskapet.' },
-      { joke: 'Hva sa den ene sokken til den andre? Jeg føler meg litt stram i dag.' },
-    ],
-    de: [
-      { joke: 'Warum war der Mathematikbuch traurig? Weil es zu viele Probleme hatte.' },
-      { joke: 'Warum war der Gürtel so optimistisch? Weil er endlich einen Job hatte, um seine Hose zu halten.' },
-    ],
-    
-  };
